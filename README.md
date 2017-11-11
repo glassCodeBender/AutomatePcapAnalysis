@@ -2,5 +2,5 @@
 
 This is far from done, but I'm tired.
 
-The program can run as scheduled task periodically, grab traffic, and then print output to a directory about
+The program will run as a scheduled task, grab traffic, and then print output to a directory in csv format about
 who has connections into your system.
