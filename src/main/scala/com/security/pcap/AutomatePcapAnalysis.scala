@@ -1,4 +1,5 @@
 package com.security.pcap
+
 import sys.process._
 import scala.io.Source
 import java.util.Calendar
@@ -18,6 +19,21 @@ class AutomatePcapAnalysis(pcapFile: String) {
       val csvVec: Vector[String] = read.get
       val csvContent = csvVec.tail.map(_.split(','))
 
+      
+      val ipSrc: Vector[String] = csvContent.map(x => x(7)).distinct 
+      val ipDst: Vector[String] = csvContent.map(x => x(8)).distinct
+
+      val udpSrc: Vector[String] = csvContent.map(x => x(12)).distinct
+      val udpDst: Vector[String] = csvContent.map(x => x(13)).distinct
+      
+      val tcpSrc = csvContent.map(x => x(15)).distinct 
+      val tcpDest = csvContent.map(x => x(16)).distinct 
+     
+      /** Need to do checking to see which values use other protocols 
+        * 
+        * Then perform WhoIs lookup
+        */
+      
       /**
         * COLUMNS:
         * 0"frame_time",
@@ -45,11 +61,6 @@ class AutomatePcapAnalysis(pcapFile: String) {
         * 22"http_response_code",
         * 23"http_response_phrase"
         */
-
-
-
-
-
 
     }
 
