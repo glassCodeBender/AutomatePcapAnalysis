@@ -68,16 +68,16 @@ class AutomatePcapAnalysis(pcapFile: String) {
         */
 
         // THESE ARE GRABBING PORT NUMBERS
-      val udpSrc: Vector[String] = csvContent.map(x => x(13)).distinct
-      val udpDst: Vector[String] = csvContent.map(x => x(14)).distinct
+      // val udpSrc: Vector[String] = csvContent.map(x => x(13)).distinct
+      // val udpDst: Vector[String] = csvContent.map(x => x(14)).distinct
 
-      val udpSrcDiff = udpSrc.diff(udpDst)
-      println("Print udpSrcDiff")
-      udpSrcDiff.foreach(println)
+      // val udpSrcDiff = udpSrc.diff(udpDst)
+      // println("Print udpSrcDiff")
+      // udpSrcDiff.foreach(println)
 
-      val udpDstDiff = udpDst.diff(udpSrc)
-      println("Print udpDstDiff")
-      udpDstDiff.foreach(println)
+      // val udpDstDiff = udpDst.diff(udpSrc)
+      // println("Print udpDstDiff")
+      // udpDstDiff.foreach(println)
 
       /**
         * grab common values and put in data structure.
@@ -132,6 +132,9 @@ class AutomatePcapAnalysis(pcapFile: String) {
         * 31-http.response.phrase
         */
 
+
+
+
     } // END else
 
 
@@ -145,7 +148,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
   private[this] def getWhoIs(str: String): PageInfo = {
     val whois = new WhoIs(str)
-    val result = Try(whois.query()).getOrElse(PageInfo("Failed", "Failed", "Failed", "Failed", "", "","","",""))
+    val result = Try(whois.query()).getOrElse(PageInfo(str, "Failed", "Failed", "Failed", "", "","","",""))
 
     return result
   }
