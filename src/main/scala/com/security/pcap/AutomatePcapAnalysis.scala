@@ -16,13 +16,13 @@ class AutomatePcapAnalysis(pcapFile: String) {
     }
     else{
 
-      val csvVec: Vector[String] = read.get
+      val csvVec: Vector[String] = read.get.drop(1)
       /** Remove headers and create 2d array */
-      val csvContent = csvVec.tail.map(_.split(','))
+      val csvContent = csvVec.map(_.split(','))
 
       /** Grab content from various ip address columns */
-      val ipSrc: Vector[String] = csvContent.map(x => x(7)).distinct
-      val ipDst: Vector[String] = csvContent.map(x => x(8)).distinct
+      val ipSrc: Vector[String] = csvContent.map(x => x(8)).distinct
+      val ipDst: Vector[String] = csvContent.map(x => x(9)).distinct
 
       println("ipSrc size: " + ipSrc.size)
       println("ipDst size: " + ipDst.size)
@@ -50,8 +50,8 @@ class AutomatePcapAnalysis(pcapFile: String) {
         */
 
         // THESE ARE GRABBING PORT NUMBERS
-      val udpSrc: Vector[String] = csvContent.map(x => x(12)).distinct
-      val udpDst: Vector[String] = csvContent.map(x => x(13)).distinct
+      val udpSrc: Vector[String] = csvContent.map(x => x(13)).distinct
+      val udpDst: Vector[String] = csvContent.map(x => x(14)).distinct
 
       val udpSrcDiff = udpSrc.diff(udpDst)
       println("Print udpSrcDiff")
@@ -60,49 +60,6 @@ class AutomatePcapAnalysis(pcapFile: String) {
       val udpDstDiff = udpDst.diff(udpSrc)
       println("Print udpDstDiff")
       udpDstDiff.foreach(println)
-
-
-      /**
-        * CURRENT OUTPUT 
-        * 
-        * ipSrc size: 2
-ipDst size: 10
-Printing ipSrc: 
-"0x00000000"
-"0x00000002"
-Printing ipDst: 
-"192.168.1.3"
-"192.168.1.1"
-"54.70.75.227"
-"23.246.2.170"
-"172.217.9.174"
-"172.217.9.3"
-"172.217.9.2"
-"216.58.194.78"
-"23.246.2.139"
-"64.233.180.147"
-Print ipSrcDiff
-"0x00000000"
-"0x00000002"
-Printing ipSrcDiff count: 2
-Print ipDstDiff
-"192.168.1.3"
-"192.168.1.1"
-"54.70.75.227"
-"23.246.2.170"
-"172.217.9.174"
-"172.217.9.3"
-"172.217.9.2"
-"216.58.194.78"
-"23.246.2.139"
-"64.233.180.147"
-Printing ipDstDiff count: 10
-Print udpSrcDiff
-Print udpDstDiff
-"50001"
-"53"
-"2190"
-        */
 
       /**
         * grab common values and put in data structure.
@@ -156,6 +113,9 @@ Print udpDstDiff
         * 30-http.response.code,
         * 31-http.response.phrase
         */
+
+
+
 
     } // END else
 
