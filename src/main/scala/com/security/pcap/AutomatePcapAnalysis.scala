@@ -16,10 +16,16 @@ class AutomatePcapAnalysis(pcapFile: String) {
     }
     else{
 
-      val csvVec: Vector[String] = read.get.drop(1)
-      /** Remove headers and create 2d array */
-      val csvContent = csvVec.map(_.split(','))
+      val csvVec: Vector[String] = read.get
+      /** Create single array of column headers*/
+      val colHeaders: Array[String] = csvVec.head.split(',')
 
+      /** Remove headers and create 2d array of values */
+      val csvContent = csvVec.drop(1).map(_.split(','))
+
+      /**
+        * Eventually all this logic needs it's own method.
+        */
       /** Grab content from various ip address columns */
       val ipSrc: Vector[String] = csvContent.map(x => x(8)).distinct
       val ipDst: Vector[String] = csvContent.map(x => x(9)).distinct
@@ -32,19 +38,22 @@ class AutomatePcapAnalysis(pcapFile: String) {
       println("Printing ipDst: ")
       ipDst.foreach(println)
 
-      /** Find the values in src that are not in dst */
-      val ipSrcDiff = ipSrc.diff(ipDst)
-      println("Print ipSrcDiff")
-      ipSrcDiff.foreach(println)
-      println("Printing ipSrcDiff count: " + ipSrcDiff.size )
+      val concatIp = ipDst ++: ipSrc
 
-      val ipDstDiff = ipDst.diff(ipSrc)
-      println("Print ipDstDiff")
-      ipDstDiff.foreach(println)
-      println("Printing ipDstDiff count: " + ipDstDiff.size )
+      /** Filter out local IP addresses */
+      val filterOutLocal = concatIp.filterNot(_.startsWith("192"))
+        .filterNot(_.startsWith("10"))
+        .filterNot(_.startsWith("172"))
+
+      val distinctIps: Vector[String] = filterOutLocal.distinct
+
+      val pageInfoFound: Vector[PageInfo] = whoIsQuery(distinctIps)
+
+      println("Printing Page Info Found")
+
+      pageInfoFound.foreach(println)
 
       /**
-        * NEED TO REMOVE LOCAL IPs
         * grab common values and put in data structure.
         * grab distinct values and put in two other data structures.
         */
@@ -114,13 +123,23 @@ class AutomatePcapAnalysis(pcapFile: String) {
         * 31-http.response.phrase
         */
 
-
-
-
     } // END else
 
 
   } // END main()
+
+  private[this] def whoIsQuery(vec: Vector[String]): Vector[PageInfo] = {
+    val whoIsResults: Vector[PageInfo] = for(str <- vec) yield getWhoIs(str)
+
+    return whoIsResults
+  } // END whoIs()
+
+  private[this] def getWhoIs(str: String): PageInfo = {
+    val whois = new WhoIs(str)
+    val result = Try(whois.query()).getOrElse(PageInfo("Failed", "Failed", "Failed", "Failed", "", "","","",""))
+
+    return result
+  }
 
   def readFile(pcap: String): Try[Vector[String]] = {
     Try(Source.fromFile(pcap).getLines.toVector)
