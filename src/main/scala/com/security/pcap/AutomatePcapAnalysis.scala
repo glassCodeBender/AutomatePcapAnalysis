@@ -56,6 +56,8 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
       val pageInfoFound: Vector[PageInfo] = whoIsQuery(cleanerIps)
 
+      // Send results to json 
+      
       println("Printing Page Info Found")
 
       pageInfoFound.foreach(println)
@@ -83,13 +85,6 @@ class AutomatePcapAnalysis(pcapFile: String) {
         */
 
       // Skipping port numbers for now
-
-      /**
-        * Need to do checking to see which values use other protocols
-        *
-        * Then perform WhoIs lookup
-        */
-
 
       /**
         * COLUMNS:
