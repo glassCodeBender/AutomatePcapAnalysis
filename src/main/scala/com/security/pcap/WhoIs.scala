@@ -18,9 +18,9 @@ final case class PageInfo( ip: String,
                          ){
   override def toString = {
     if (name == "Connection failed.")
-      "Connection failed."
+      s"Connection failed for ip address $ip."
     else {
-      s"\nWhois Results for $url\nName: $name\nStreet: $street\nCity: $city\nState: $state\nPostal Code: $post\nCountry: $country\n" +
+      s"\nWhois Results for IP Address: $ip\nName: $name\nStreet: $street\nCity: $city\nState: $state\nPostal Code: $post\nCountry: $country\n" +
         s"IP Address Range: $ipRange\nWhois Registration Info URL: $url" + "\n"
     }
   } // END toString()
