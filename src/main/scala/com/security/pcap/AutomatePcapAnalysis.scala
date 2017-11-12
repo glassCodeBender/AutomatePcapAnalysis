@@ -47,10 +47,14 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
       val distinctIps: Vector[String] = filterOutLocal.distinct
 
-      val regex = "\"".r
-      val cleanIps = distinctIps.map(x => regex.replaceAllIn(x, ""))
+      // val regex = "\"".r
+      // val cleanIps = distinctIps.map(x => regex.replaceAllIn(x, ""))
 
-      val pageInfoFound: Vector[PageInfo] = whoIsQuery(distinctIps)
+      /** Removing quotes because the regex won't work! */
+      val clean = distinctIps.map(_.drop(1))
+      val cleanerIps = clean.map(_.dropRight(1))
+
+      val pageInfoFound: Vector[PageInfo] = whoIsQuery(cleanerIps)
 
       println("Printing Page Info Found")
 
