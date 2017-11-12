@@ -40,12 +40,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
       val concatIp = ipDst ++: ipSrc
 
-      /** Filter out local IP addresses */
-      val filterOutLocal = concatIp.filterNot(_.startsWith("192"))
-        .filterNot(_.startsWith("10"))
-        .filterNot(_.startsWith("172"))
-
-      val distinctIps: Vector[String] = filterOutLocal.distinct
+      val distinctIps: Vector[String] = concatIp.distinct
 
       // val regex = "\"".r
       // val cleanIps = distinctIps.map(x => regex.replaceAllIn(x, ""))
@@ -54,13 +49,18 @@ class AutomatePcapAnalysis(pcapFile: String) {
       val clean = distinctIps.map(_.drop(1))
       val cleanerIps = clean.map(_.dropRight(1))
 
+      /** Filter out local IP addresses */
+      val filterOutLocal = cleanerIps.filterNot(_.startsWith("192"))
+        .filterNot(_.startsWith("10"))
+        .filterNot(_.startsWith("172"))
+
       val pageInfoFound: Vector[PageInfo] = whoIsQuery(cleanerIps)
 
-      // Send results to json 
-      
       println("Printing Page Info Found")
 
       pageInfoFound.foreach(println)
+
+      println("Awesome!")
 
       /**
         * grab common values and put in data structure.
@@ -85,6 +85,13 @@ class AutomatePcapAnalysis(pcapFile: String) {
         */
 
       // Skipping port numbers for now
+
+      /**
+        * Need to do checking to see which values use other protocols
+        *
+        * Then perform WhoIs lookup
+        */
+
 
       /**
         * COLUMNS:
