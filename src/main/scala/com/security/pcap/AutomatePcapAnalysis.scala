@@ -110,9 +110,11 @@ class AutomatePcapAnalysis(pcapFile: String) {
     "Medium and Low Risk classifications are very common.\n")
 
     val tcpDst: Vector[(String, String)] = tcpDstCommonTargets.filterNot(x => x._2.contains("None"))
+    if (tcpDst.nonEmpty) for(value <- tcpDst) println("Port: " + value._1 + " Classification: " + value._2)
     val tcpDstCommonReturn: Vector[Array[String]] = tcpDst.map(x => Array("tcpDst", x._1, x._2))
 
     val tcpSrc: Vector[(String, String)]  = tcpSrcCommonTargets.filterNot(x => x._2.contains("None"))
+    if (tcpSrc.nonEmpty) for(value <- tcpSrc) println("Port: " + value._1 + " Classification: " + value._2)
     val tcpSrcCommonReturn: Vector[Array[String]] = tcpSrc.map(x => Array("tcpSrc", x._1, x._2))
 
     /** TCP Port Risk */
@@ -134,11 +136,11 @@ class AutomatePcapAnalysis(pcapFile: String) {
     val udpSrcCommonTargets = checkCommonTargets(udpPortSrc)
 
     val udpDstTargets = udpDstCommonTargets.filterNot(x => x._2.contains("None"))
-    if (udpDstTargets.nonEmpty) for(value <- udpDstTargets) println("Port: " + value._1 + " Risk: " + value._2)
+    if (udpDstTargets.nonEmpty) for(value <- udpDstTargets) println("Port: " + value._1 + " Classification: " + value._2)
     val udpDstCommonReturn: Vector[Array[String]] = udpDstTargets.map(x => Array("tcpDst", x._1, x._2))
 
     val udpSrcTargets: Vector[(String, String)]  = udpSrcCommonTargets.filterNot(x => x._2.contains("None"))
-    if (udpSrcTargets.nonEmpty) for(value <- udpSrcTargets) println("Port: " + value._1 + " Risk: " + value._2)
+    if (udpSrcTargets.nonEmpty) for(value <- udpSrcTargets) println("Port: " + value._1 + " Classification: " + value._2)
     val udpSrcCommonReturn: Vector[Array[String]] = udpSrcTargets.map(x => Array("tcpSrc", x._1, x._2))
 
     val commonTargetReturn: Vector[Array[String]] = {
@@ -151,19 +153,22 @@ class AutomatePcapAnalysis(pcapFile: String) {
     val udpSrcPortRisk = checkPortRisk(udpPortSrc)
 
     val udpDst: Vector[(String, String)]  = udpDstPortRisk.filterNot(x => x._2.contains("None"))
+     if (udpDst.nonEmpty) for(value <- udpDst) println("Port: " + value._1 + " Risk: " + value._2)
+
     val udpDstRiskReturn: Vector[Array[String]] = udpDst.map(x => Array("udpDst", x._1, x._2))
 
     val udpSrc: Vector[(String, String)]  = udpSrcPortRisk.filterNot(x => x._2.contains("None"))
+    if (udpSrc.nonEmpty) for(value <- udpSrc) println("Port: " + value._1 + " Risk: " + value._2)
     val udpSrcRiskReturn: Vector[Array[String]] = udpSrc.map(x => Array("udpSrc", x._1, x._2))
 
 
     /** Print TCP Common Targets */
-    if (tcpDst.nonEmpty) for(value <- tcpDst) println("Port: " + value._1 + " Classification: " + value._2)
-    if (tcpSrc.nonEmpty) for(value <- tcpSrc) println("Port: " + value._1 + " Classification: " + value._2)
+    // if (tcpDst.nonEmpty) for(value <- tcpDst) println("Port: " + value._1 + " Classification: " + value._2)
+    // if (tcpSrc.nonEmpty) for(value <- tcpSrc) println("Port: " + value._1 + " Classification: " + value._2)
 
     /** Print UDP Common Targets */
-    if (udpSrc.nonEmpty) for(value <- udpSrc) println("Port: " + value._1 + " Classification: " + value._2)
-    if (udpDst.nonEmpty) for(value <- udpDst) println("Port: " + value._1 + " Classification: " + value._2)
+    // if (udpSrc.nonEmpty) for(value <- udpSrc) println("Port: " + value._1 + " Classification: " + value._2)
+    // if (udpDst.nonEmpty) for(value <- udpDst) println("Port: " + value._1 + " Classification: " + value._2)
 
     val riskReturn = tcpDstRiskReturn ++: tcpSrcRiskReturn ++: udpDstRiskReturn ++: udpSrcRiskReturn
 
@@ -185,7 +190,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
     val fixedFlags = for{
       x <- vec
     } yield Array(x(0), x(1), x(2), x(3), x(4),x(5), x(6), x(7), x(8), x(9),x(10), x(11), x(12),
-      x(13), x(14),x(15), x(16), x(17), x(18), x(19), x(20), tcpFlags(x(21)), x(22), x(23))
+      x(13), x(14),x(15), x(16), x(17), x(18), x(19), x(20), Try(tcpFlags(x(21))).getOrElse("Other"), x(22), x(23))
 
     val sessionStarts = for{
       line <- fixedFlags
