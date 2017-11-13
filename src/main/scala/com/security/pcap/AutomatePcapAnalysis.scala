@@ -93,9 +93,13 @@ class AutomatePcapAnalysis(pcapFile: String) {
     val tcpSrcPortRisk = checkPortRisk(tcpPortSrc)
 
     val tcpDstRisk: Vector[(String, String)]  = tcpDstPortRisk.filterNot(x => x._2.contains("None"))
+    if (tcpDstRisk.nonEmpty) for(value <- tcpDstRisk) println("Port: " + value._1 + " Risk: " + value._2)
+
     val tcpDstRiskReturn: Vector[Array[String]] = tcpDstRisk.map(x => Array("tcppDst", x._1, x._2))
 
     val tcpSrcRisk: Vector[(String, String)]  = tcpSrcPortRisk.filterNot(x => x._2.contains("None"))
+
+    if (tcpSrcRisk.nonEmpty) for(value <- tcpSrcRisk) println("Port: " + value._1 + " Risk: " + value._2)
     val tcpSrcRiskReturn: Vector[Array[String]] = tcpSrcRisk.map(x => Array("tcpSrc", x._1, x._2))
 
     /** UDP Common Tagets */
@@ -103,18 +107,17 @@ class AutomatePcapAnalysis(pcapFile: String) {
     val udpSrcCommonTargets = checkCommonTargets(udpPortSrc)
 
     val udpDstTargets = udpDstCommonTargets.filterNot(x => x._2.contains("None"))
+    if (udpDstTargets.nonEmpty) for(value <- udpDstTargets) println("Port: " + value._1 + " Risk: " + value._2)
     val udpDstCommonReturn: Vector[Array[String]] = udpDstTargets.map(x => Array("tcpDst", x._1, x._2))
 
     val udpSrcTargets: Vector[(String, String)]  = udpSrcCommonTargets.filterNot(x => x._2.contains("None"))
+    if (udpSrcTargets.nonEmpty) for(value <- udpSrcTargets) println("Port: " + value._1 + " Risk: " + value._2)
     val udpSrcCommonReturn: Vector[Array[String]] = udpSrcTargets.map(x => Array("tcpSrc", x._1, x._2))
 
     val commonTargetReturn: Vector[Array[String]] = {
       tcpSrcCommonReturn ++: tcpDstCommonReturn ++: udpDstCommonReturn ++: udpSrcCommonReturn
     }
-    /** Port Risk*/
-
-
-
+    
     /** UDP Port Risk */
 
     val udpDstPortRisk = checkPortRisk(udpPortDst)
