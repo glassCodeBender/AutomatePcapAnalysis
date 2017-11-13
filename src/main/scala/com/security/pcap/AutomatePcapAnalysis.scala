@@ -1,6 +1,7 @@
 package com.security.pcap
 // import sys.process._
 import scala.collection.immutable.TreeMap
+import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 // import java.util.Calendar
 
@@ -21,8 +22,22 @@ class AutomatePcapAnalysis(pcapFile: String) {
       /** Create single array of column headers*/
       val colHeaders: Array[String] = csvVec.head.split(',')
 
+
+
+
+
       /** Remove headers and create 2d array of values */
       val csvContent = csvVec.drop(1).map(_.split(','))
+
+      var buff = ArrayBuffer[(Int, String)]()
+      var i = 0
+      while(i < csvContent(2).size){
+        buff += (i -> csvContent(2)(i))
+        i = i + 1
+      }
+
+      println("Printing values and indices")
+      buff.foreach(println)
 
       /**
         * Eventually all this logic needs it's own method.
@@ -43,6 +58,30 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
       val distinctIps: Vector[String] = concatIp.distinct
 
+      /** Figure out which ports were used */
+
+      // Need to make sure TCP Port exists or else we assign a different value to it.
+      val portsSrc = csvContent.map(x => Try(x(23)).getOrElse("000")).distinct
+      val portsDst = csvContent.map(x => Try(x(24)).getOrElse("000")).distinct
+      // Remove quotes
+      val tcpPortSrc = portsSrc.drop(1).dropRight(1)
+      val tcpPortDst = portsDst.drop(1).dropRight(1)
+
+      println("Printing source ports...\n")
+      portsSrc.drop(1).foreach(println)
+      println("Printing destination ports...\n")
+      portsDst.drop(1).foreach(println)
+
+      val pSrc = csvContent.map(x => Try(x(13)).getOrElse("000")).distinct
+      val pDst = csvContent.map(x => Try(x(14)).getOrElse("000")).distinct
+      val udpPortSrc = pSrc.drop(1).dropRight(1)
+      val udpPortDst = pDst.drop(1).dropRight(1)
+
+      println("Printing UDP source ports...\n")
+      udpPortSrc.drop(1).foreach(println)
+      println("Printing UDP destination ports...\n")
+      udpPortDst.drop(1).foreach(println)
+
       // val regex = "\"".r
       // val cleanIps = distinctIps.map(x => regex.replaceAllIn(x, ""))
 
@@ -61,7 +100,10 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
       pageInfoFound.foreach(println)
 
-      println("Awesome!")
+      println("Awesome! Page information printed.\n\nNow we're going to check for commonly attacked ports...\n\n")
+
+
+
 
       /**
         * grab common values and put in data structure.
