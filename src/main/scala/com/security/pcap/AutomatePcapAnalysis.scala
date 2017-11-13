@@ -4,12 +4,20 @@ package com.security.pcap
 import scala.collection.immutable.TreeMap
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
+import scala.collection.mutable._
+
+import net.liftweb.json._
+import net.liftweb.json.Serialization.write
+
 // import java.util.Calendar
 
 import scala.util.Try
 
-final case class PortProblems( riskyPorts: Vector[Array[String]],
+final case class PcapAnalysis( riskyPorts: Vector[Array[String]],
                                commonTarget: Vector[Array[String]],
+                               fullCapture: Vector[Array[String]],
+                               sessions: Vector[Array[String]],
+                               ipInfo: Vector[PageInfo]
                              )
 
 class AutomatePcapAnalysis(pcapFile: String) {
@@ -29,27 +37,42 @@ class AutomatePcapAnalysis(pcapFile: String) {
       val colHeaders: Array[String] = csvVec.head.split('\t')
 
       /** Remove headers and create 2d array of values */
-      val csvContent: Vector[Array[String]] = csvVec.drop(1).map(_.split('\t'))
+      val csvContent: Vector[Array[String]] = csvVec.tail.map(_.split('\t'))
 
+      /** Get information about the IP addresses. */
       val ipInfo: Vector[PageInfo] = ipAnalysis(csvContent)
 
-      val portProblems: PortProblems = portRiskAnalysis(csvContent)
+      /** Look for ports commonly attacked by adversaries. */
+      val (risk, commonTargets): (Vector[Array[String]], Vector[Array[String]]) = portRiskAnalysis(csvContent)
 
+      /** Check for the beginning of sessions. Might miss some if sniffer started after session began.*/
+      val (fullContent, sessBeginning)  = checkSessionBeginnings(csvContent)
 
-      /**
-        * grab common values and put in data structure.
-        * grab distinct values and put in two other data structures.
-        */
+      val cleanedContent = fullContent :+ colHeaders
+      val sessBegin = sessBeginning :+ colHeaders
 
+      val findings = PcapAnalysis(risk, commonTargets, cleanedContent, sessBegin, ipInfo)
+
+      val jsonFindings = createJson(findings)
 
 
     } // END else
 
 
   } // END main()
+  private[this] def createJson(pcapAnalysis: PcapAnalysis): String = {
+
+    implicit val formats = DefaultFormats
+    val jsonStr: String = write(pcapAnalysis)
+    println("Printing test json string")
+    println(jsonStr)
+
+    return jsonStr
+  } // END createJson()
 
   /** Checks ports against the most common attacked ports. */
-  private[this] def portRiskAnalysis(csvContent: Vector[Array[String]]): PortProblems ={
+  private[this] def portRiskAnalysis(csvContent: Vector[Array[String]]):
+                                                      (Vector[Array[String]], Vector[Array[String]]) ={
 
     /** Figure out which ports were used */
 
@@ -81,6 +104,10 @@ class AutomatePcapAnalysis(pcapFile: String) {
       /** TCP Common Targets */
     val tcpDstCommonTargets = checkCommonTargets(tcpPortDst)
     val tcpSrcCommonTargets = checkCommonTargets(tcpPortSrc)
+
+    println("Printing possible problem ports...\n\n")
+    println("NOTE: Most port numbers can be used by any application. The rating is based on commonly attacked ports.\n" +
+    "Medium and Low Risk classifications are very common.\n")
 
     val tcpDst: Vector[(String, String)] = tcpDstCommonTargets.filterNot(x => x._2.contains("None"))
     val tcpDstCommonReturn: Vector[Array[String]] = tcpDst.map(x => Array("tcpDst", x._1, x._2))
@@ -117,7 +144,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
     val commonTargetReturn: Vector[Array[String]] = {
       tcpSrcCommonReturn ++: tcpDstCommonReturn ++: udpDstCommonReturn ++: udpSrcCommonReturn
     }
-    
+
     /** UDP Port Risk */
 
     val udpDstPortRisk = checkPortRisk(udpPortDst)
@@ -131,21 +158,42 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
 
     /** Print TCP Common Targets */
-    if (tcpDst.nonEmpty) for(value <- tcpDst) println("Port: " + value._1 + " Risk: " + value._2)
-    if (tcpSrc.nonEmpty) for(value <- tcpSrc) println("Port: " + value._1 + " Risk: " + value._2)
+    if (tcpDst.nonEmpty) for(value <- tcpDst) println("Port: " + value._1 + " Classification: " + value._2)
+    if (tcpSrc.nonEmpty) for(value <- tcpSrc) println("Port: " + value._1 + " Classification: " + value._2)
 
     /** Print UDP Common Targets */
-    if (udpSrc.nonEmpty) for(value <- udpSrc) println("Port: " + value._1 + " Risk: " + value._2)
-    if (udpDst.nonEmpty) for(value <- udpDst) println("Port: " + value._1 + " Risk: " + value._2)
+    if (udpSrc.nonEmpty) for(value <- udpSrc) println("Port: " + value._1 + " Classification: " + value._2)
+    if (udpDst.nonEmpty) for(value <- udpDst) println("Port: " + value._1 + " Classification: " + value._2)
 
     val riskReturn = tcpDstRiskReturn ++: tcpSrcRiskReturn ++: udpDstRiskReturn ++: udpSrcRiskReturn
 
 
     // val probs: Vector[Array[String]] = tcpDstReturn ++: tcpSrcReturn ++: udpDstReturn ++: udpSrcReturn
 
-    return PortProblems(riskReturn, commonTargetReturn)
+    return (riskReturn, commonTargetReturn)
   } // END portAnalysis()
 
+  private[this] def checkSessionBeginnings(vec: Vector[Array[String]]):
+                                                              (Vector[Array[String]], Vector[Array[String]]) = {
+
+
+    val tcpFlags = Map("0x0002" -> "SYN", "0x0012" -> "SYN+ACK", "0x0010" -> "ACK",
+    "0x0018" -> "PSH+ACK", "0x0011"-> "FIN+ACK", "0x0019" -> "0x0011", "0x0019" -> "FIN+PSH+ACK",
+    "0x0004" -> "RST", "0x0038" -> "RST", "0x0038" -> "PSH+URG+ACK", "0x0014" -> "RST+ACK")
+
+    /** Changes the flag value. combines source and dest ips into a single field. */
+    val fixedFlags = for{
+      x <- vec
+    } yield Array(x(0), x(1), x(2), x(3), x(4),x(5), x(6), x(7), x(8), x(9),x(10), x(11), x(12),
+      x(13), x(14),x(15), x(16), x(17), x(18), x(19), x(20), tcpFlags(x(21)), x(22), x(23))
+
+    val sessionStarts = for{
+      line <- fixedFlags
+      if line(21) == "SYN"
+    } yield line
+
+    return (fixedFlags, sessionStarts)
+  } // END checkSessionBeginnings
   private[this] def checkCommonTargets(vec: Vector[String]): Vector[(String, String)] ={
 
     val commonTargets = for(portNo <- vec) yield getCommonTargetPort(portNo)
@@ -162,6 +210,8 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
   private[this] def ipAnalysis(csvContent: Vector[Array[String]]): Vector[PageInfo] = {
 
+    /** This is for debugging */
+    /*
     var buff = ArrayBuffer[(Int, String)]()
     var i = 0
     while(i < csvContent(2).size){
@@ -169,12 +219,11 @@ class AutomatePcapAnalysis(pcapFile: String) {
       i = i + 1
     }
 
-    println("Printing values and indices")
-    buff.foreach(println)
+    // println("Printing values and indices")
+    // buff.foreach(println)
 
-    /**
-      * Eventually all this logic needs it's own method.
-      */
+    */
+
     /** Grab content from various ip address columns */
     val ipSrc: Vector[String] = csvContent.map(x => x(7)).distinct
     val ipDst: Vector[String] = csvContent.map(x => x(8)).distinct
