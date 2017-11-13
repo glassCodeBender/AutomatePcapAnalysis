@@ -1,4 +1,4 @@
-package com.security.pcap
+package com.bbs.vol.httpclient
 
 import java.net.{HttpURLConnection, URL}
 
@@ -27,8 +27,7 @@ final case class PageInfo( ip: String,
 
 } // END PageInfo case class
 
-class WhoIs(ip: String) {
-
+class WhoIs(ip: String) extends HttpClient(ip) {
   def query( connectTimeOut: Int = 5000,
              readTimeout: Int = 5000,
              request: String = "GET" ): PageInfo = {
@@ -36,12 +35,13 @@ class WhoIs(ip: String) {
     val url = "http://whois.arin.net/rest/ip/" + ip
 
     println("Querying with whois at url: " + url + "\n")
-    val page = grabPage(url, connectTimeOut, readTimeout, request)
+    val page = super.query(ip) //grabPage(url, connectTimeOut, readTimeout, request)
 
     val (url2, netRange): (String, String) = parsePageUrl(page)
 
-    val infoPage = Try(grabPage(url2, connectTimeOut, readTimeout, request))
-      .getOrElse("Connection to second page failed...")
+    val infoPage = Try(super.query(url2)).getOrElse("Connection to second page failed...")
+
+    //Try(grabPage(url2, connectTimeOut, readTimeout, request)).getOrElse("Connection to second page failed...")
 
     val ipInfo: Vector[String] = parseInfo(infoPage)
 
