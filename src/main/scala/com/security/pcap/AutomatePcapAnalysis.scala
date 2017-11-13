@@ -19,15 +19,15 @@ class AutomatePcapAnalysis(pcapFile: String) {
     else{
 
       val csvVec: Vector[String] = read.get
+
+      // csvVec.foreach(println)
+
       /** Create single array of column headers*/
-      val colHeaders: Array[String] = csvVec.head.split(',')
-
-
-
+      val colHeaders: Array[String] = csvVec.head.split('\t')
 
 
       /** Remove headers and create 2d array of values */
-      val csvContent = csvVec.drop(1).map(_.split(','))
+      val csvContent = csvVec.drop(1).map(_.split('\t'))
 
       var buff = ArrayBuffer[(Int, String)]()
       var i = 0
@@ -43,8 +43,8 @@ class AutomatePcapAnalysis(pcapFile: String) {
         * Eventually all this logic needs it's own method.
         */
       /** Grab content from various ip address columns */
-      val ipSrc: Vector[String] = csvContent.map(x => x(8)).distinct
-      val ipDst: Vector[String] = csvContent.map(x => x(9)).distinct
+      val ipSrc: Vector[String] = csvContent.map(x => x(7)).distinct
+      val ipDst: Vector[String] = csvContent.map(x => x(8)).distinct
 
       println("ipSrc size: " + ipSrc.size)
       println("ipDst size: " + ipDst.size)
@@ -61,26 +61,26 @@ class AutomatePcapAnalysis(pcapFile: String) {
       /** Figure out which ports were used */
 
       // Need to make sure TCP Port exists or else we assign a different value to it.
-      val portsSrc = csvContent.map(x => Try(x(23)).getOrElse("000")).distinct
-      val portsDst = csvContent.map(x => Try(x(24)).getOrElse("000")).distinct
+      val portsSrc = csvContent.map(x => Try(x(22)).getOrElse("000")).distinct
+      val portsDst = csvContent.map(x => Try(x(23)).getOrElse("000")).distinct
       // Remove quotes
-      val tcpPortSrc = portsSrc.drop(1).dropRight(1)
-      val tcpPortDst = portsDst.drop(1).dropRight(1)
+      //val tcpPortSrc = portsSrc.drop(1).dropRight(1)
+      //val tcpPortDst = portsDst.drop(1).dropRight(1)
 
       println("Printing source ports...\n")
       portsSrc.drop(1).foreach(println)
       println("Printing destination ports...\n")
       portsDst.drop(1).foreach(println)
 
-      val pSrc = csvContent.map(x => Try(x(13)).getOrElse("000")).distinct
-      val pDst = csvContent.map(x => Try(x(14)).getOrElse("000")).distinct
-      val udpPortSrc = pSrc.drop(1).dropRight(1)
-      val udpPortDst = pDst.drop(1).dropRight(1)
+      val pSrc = csvContent.map(x => Try(x(11)).getOrElse("000")).distinct
+      val pDst = csvContent.map(x => Try(x(12)).getOrElse("000")).distinct
+     // val udpPortSrc = pSrc.drop(1).dropRight(1)
+     // val udpPortDst = pDst.drop(1).dropRight(1)
 
       println("Printing UDP source ports...\n")
-      udpPortSrc.drop(1).foreach(println)
+      pSrc.drop(1).foreach(println)
       println("Printing UDP destination ports...\n")
-      udpPortDst.drop(1).foreach(println)
+      pDst.drop(1).foreach(println)
 
       // val regex = "\"".r
       // val cleanIps = distinctIps.map(x => regex.replaceAllIn(x, ""))
