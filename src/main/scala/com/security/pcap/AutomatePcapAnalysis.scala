@@ -15,7 +15,6 @@ import scala.util.Try
 
 final case class PcapAnalysis( riskyPorts: Vector[Array[String]],
                                commonTarget: Vector[Array[String]],
-                               fullCapture: Vector[Array[String]],
                                sessions: Vector[Array[String]],
                                ipInfo: Vector[PageInfo]
                              )
@@ -36,22 +35,24 @@ class AutomatePcapAnalysis(pcapFile: String) {
       /** Create single array of column headers*/
       val colHeaders: Array[String] = csvVec.head.split('\t')
 
+      println("Column Headers: \n")
+      // colHeaders.foreach(println)
+
       /** Remove headers and create 2d array of values */
       val csvContent: Vector[Array[String]] = csvVec.tail.map(_.split('\t'))
-
-      /** Get information about the IP addresses. */
-      val ipInfo: Vector[PageInfo] = ipAnalysis(csvContent)
 
       /** Look for ports commonly attacked by adversaries. */
       val (risk, commonTargets): (Vector[Array[String]], Vector[Array[String]]) = portRiskAnalysis(csvContent)
 
       /** Check for the beginning of sessions. Might miss some if sniffer started after session began.*/
-      val (fullContent, sessBeginning)  = checkSessionBeginnings(csvContent)
+      val sessBeginning  = checkSessionBeginnings(csvContent)
 
-      val cleanedContent = fullContent :+ colHeaders
+      /** Get information about the IP addresses. */
+      val ipInfo: Vector[PageInfo] = ipAnalysis(csvContent)
+
       val sessBegin = sessBeginning :+ colHeaders
 
-      val findings = PcapAnalysis(risk, commonTargets, cleanedContent, sessBegin, ipInfo)
+      val findings = PcapAnalysis(risk, commonTargets, sessBegin, ipInfo)
 
       val jsonFindings = createJson(findings)
 
@@ -105,7 +106,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
     val tcpDstCommonTargets = checkCommonTargets(tcpPortDst)
     val tcpSrcCommonTargets = checkCommonTargets(tcpPortSrc)
 
-    println("Printing possible problem ports...\n\n")
+    println("\nPrinting possible problem ports...\n\n")
     println("NOTE: Most port numbers can be used by any application. The rating is based on commonly attacked ports.\n" +
     "Medium and Low Risk classifications are very common.\n")
 
@@ -178,26 +179,30 @@ class AutomatePcapAnalysis(pcapFile: String) {
     return (riskReturn, commonTargetReturn)
   } // END portAnalysis()
 
-  private[this] def checkSessionBeginnings(vec: Vector[Array[String]]):
-                                                              (Vector[Array[String]], Vector[Array[String]]) = {
+  private[this] def checkSessionBeginnings(vec: Vector[Array[String]]): Vector[Array[String]] = {
 
 
-    val tcpFlags = Map("0x0002" -> "SYN", "0x0012" -> "SYN+ACK", "0x0010" -> "ACK",
-    "0x0018" -> "PSH+ACK", "0x0011"-> "FIN+ACK", "0x0019" -> "0x0011", "0x0019" -> "FIN+PSH+ACK",
-    "0x0004" -> "RST", "0x0038" -> "RST", "0x0038" -> "PSH+URG+ACK", "0x0014" -> "RST+ACK")
+    val tcpFlags = Map("0x00000002" -> "SYN", "0x00000012" -> "SYN+ACK", "0x00000010" -> "ACK",
+    "0x00000018" -> "PSH+ACK", "0x00000011"-> "FIN+ACK", "0x00000019" -> "0x00000011", "0x00000019" -> "FIN+PSH+ACK",
+    "0x00000004" -> "RST", "0x00000038" -> "RST", "0x00000038" -> "PSH+URG+ACK", "0x00000014" -> "RST+ACK")
 
     /** Changes the flag value. combines source and dest ips into a single field. */
-    val fixedFlags = for{
+    val sessionStarts = for{
       x <- vec
-    } yield Array(x(0), x(1), x(2), x(3), x(4),x(5), x(6), x(7), x(8), x(9),x(10), x(11), x(12),
-      x(13), x(14),x(15), x(16), x(17), x(18), x(19), x(20), Try(tcpFlags(x(21))).getOrElse("Other"), x(22), x(23))
+      if Try(x(21)).getOrElse("Blah") == "0x00000012"
+    } yield Array(x(0), x(1), x(2), x(3), x(4),x(5), Try(x(6)).getOrElse("Other"), x(7), x(8), x(9),x(10), x(11), x(12),
+      x(13), x(14),x(15), x(16), x(17), x(18), x(19), x(20), Try(x(21)).getOrElse("Other"), x(22), x(23))
+
+    println("Printing Session Beginnings: \n\n")
+    for(session <- sessionStarts) println(session.mkString(","))
+    /*
 
     val sessionStarts = for{
       line <- fixedFlags
       if line(21) == "SYN"
     } yield line
-
-    return (fixedFlags, sessionStarts)
+*/
+    return sessionStarts
   } // END checkSessionBeginnings
   private[this] def checkCommonTargets(vec: Vector[String]): Vector[(String, String)] ={
 
