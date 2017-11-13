@@ -33,7 +33,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
       val ipInfo: Vector[PageInfo] = ipAnalysis(csvContent)
 
-      val portProblems: Vector[Array[String]] = portRiskAnalysis(csvContent)
+      val portProblems: PortProblems = portRiskAnalysis(csvContent)
 
 
       /**
