@@ -1,4 +1,5 @@
 package com.security.pcap
+
 // import sys.process._
 import scala.collection.immutable.TreeMap
 import scala.collection.mutable.ArrayBuffer
@@ -6,6 +7,10 @@ import scala.io.Source
 // import java.util.Calendar
 
 import scala.util.Try
+
+final case class PortProblems( riskyPorts: Vector[Array[String]],
+                               commonTarget: Vector[Array[String]],
+                             )
 
 class AutomatePcapAnalysis(pcapFile: String) {
 
@@ -20,161 +25,21 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
       val csvVec: Vector[String] = read.get
 
-      // csvVec.foreach(println)
-
       /** Create single array of column headers*/
       val colHeaders: Array[String] = csvVec.head.split('\t')
 
-
       /** Remove headers and create 2d array of values */
-      val csvContent = csvVec.drop(1).map(_.split('\t'))
+      val csvContent: Vector[Array[String]] = csvVec.drop(1).map(_.split('\t'))
 
-      var buff = ArrayBuffer[(Int, String)]()
-      var i = 0
-      while(i < csvContent(2).size){
-        buff += (i -> csvContent(2)(i))
-        i = i + 1
-      }
+      val ipInfo: Vector[PageInfo] = ipAnalysis(csvContent)
 
-      println("Printing values and indices")
-      buff.foreach(println)
-
-      /**
-        * Eventually all this logic needs it's own method.
-        */
-      /** Grab content from various ip address columns */
-      val ipSrc: Vector[String] = csvContent.map(x => x(7)).distinct
-      val ipDst: Vector[String] = csvContent.map(x => x(8)).distinct
-
-      println("ipSrc size: " + ipSrc.size)
-      println("ipDst size: " + ipDst.size)
-
-      println("Printing ipSrc: ")
-      ipSrc.foreach(println)
-      println("Printing ipDst: ")
-      ipDst.foreach(println)
-
-      val concatIp = ipDst ++: ipSrc
-
-      val distinctIps: Vector[String] = concatIp.distinct
-
-      /** Figure out which ports were used */
-
-      // Need to make sure TCP Port exists or else we assign a different value to it.
-      val portsSrc = csvContent.map(x => Try(x(22)).getOrElse("000")).distinct
-      val portsDst = csvContent.map(x => Try(x(23)).getOrElse("000")).distinct
-      // Remove quotes
-      //val tcpPortSrc = portsSrc.drop(1).dropRight(1)
-      //val tcpPortDst = portsDst.drop(1).dropRight(1)
-
-      println("Printing source ports...\n")
-      portsSrc.drop(1).foreach(println)
-      println("Printing destination ports...\n")
-      portsDst.drop(1).foreach(println)
-
-      val pSrc = csvContent.map(x => Try(x(11)).getOrElse("000")).distinct
-      val pDst = csvContent.map(x => Try(x(12)).getOrElse("000")).distinct
-     // val udpPortSrc = pSrc.drop(1).dropRight(1)
-     // val udpPortDst = pDst.drop(1).dropRight(1)
-
-      println("Printing UDP source ports...\n")
-      pSrc.drop(1).foreach(println)
-      println("Printing UDP destination ports...\n")
-      pDst.drop(1).foreach(println)
-
-      // val regex = "\"".r
-      // val cleanIps = distinctIps.map(x => regex.replaceAllIn(x, ""))
-
-      /** Removing quotes because the regex won't work! */
-      val clean = distinctIps.map(_.drop(1))
-      val cleanerIps = clean.map(_.dropRight(1))
-
-      /** Filter out local IP addresses */
-      val filterOutLocal = cleanerIps.filterNot(_.startsWith("192"))
-        .filterNot(_.startsWith("10"))
-        .filterNot(_.startsWith("172"))
-
-      val pageInfoFound: Vector[PageInfo] = whoIsQuery(cleanerIps)
-
-      println("Printing Page Info Found")
-
-      pageInfoFound.foreach(println)
-
-      println("Awesome! Page information printed.\n\nNow we're going to check for commonly attacked ports...\n\n")
-
-
+      val portProblems: Vector[Array[String]] = portRiskAnalysis(csvContent)
 
 
       /**
         * grab common values and put in data structure.
         * grab distinct values and put in two other data structures.
         */
-
-      // THESE ARE GRABBING PORT NUMBERS
-      // val udpSrc: Vector[String] = csvContent.map(x => x(13)).distinct
-      // val udpDst: Vector[String] = csvContent.map(x => x(14)).distinct
-
-      // val udpSrcDiff = udpSrc.diff(udpDst)
-      // println("Print udpSrcDiff")
-      // udpSrcDiff.foreach(println)
-
-      // val udpDstDiff = udpDst.diff(udpSrc)
-      // println("Print udpDstDiff")
-      // udpDstDiff.foreach(println)
-
-      /**
-        * grab common values and put in data structure.
-        * grab distinct values and put in two other data structures.
-        */
-
-      // Skipping port numbers for now
-
-      /**
-        * Need to do checking to see which values use other protocols
-        *
-        * Then perform WhoIs lookup
-        */
-
-
-      /**
-        * COLUMNS:
-        *
-        * WE NEED ALL OF THESE FOR FUTURE ANALYSIS LATER
-        *
-        * 0-frame.time,
-        * 1-ip.version,
-        * 2-ip.id,
-        * 3-ip.len,
-        * 4-ip.proto,
-        * 5-ip.ttl,
-        * 6-ip.flags,
-        * 7-ip.src,
-        * 8-ip.dst,
-        * 9-icmp.code,
-        * 10-icmp.type,
-        * 11-icmp.resptime,
-        * 12-udp.srcport,
-        * 13-udp.dstport,
-        * 14-dns.id,
-        * 15-dns.qry.
-        * 16-type,
-        * 17-dns.resp.type,
-        * 18-dns.qry.name,
-        * 19-dns.a, Address
-        * 20-tcp.stream,
-        * 21-tcp.seq,
-        * 22-tcp.flags,
-        * 23-tcp.srcport,
-        * 24-tcp.dstport,
-        * 25-http.request.method,
-        * 26-http.host,
-        * 27-http.request.version,
-        * 28-http.user_agent,
-        * 29-http.server,
-        * 30-http.response.code,
-        * 31-http.response.phrase
-        */
-
 
 
 
@@ -182,6 +47,170 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
 
   } // END main()
+
+  /** Checks ports against the most common attacked ports. */
+  private[this] def portRiskAnalysis(csvContent: Vector[Array[String]]): PortProblems ={
+
+    /** Figure out which ports were used */
+
+    // Need to make sure TCP Port exists or else we assign a different value to it.
+    val tcpPortSrc = csvContent.map(x => Try(x(22)).getOrElse("000")).distinct
+    val tcpPortDst = csvContent.map(x => Try(x(23)).getOrElse("000")).distinct
+    // Remove quotes
+    //val tcpPortSrc = portsSrc.drop(1).dropRight(1)
+    //val tcpPortDst = portsDst.drop(1).dropRight(1)
+
+    println("Printing source ports...\n")
+    tcpPortSrc.drop(1).foreach(println)
+    println("Printing destination ports...\n")
+    tcpPortDst.drop(1).foreach(println)
+
+    /** Cleaning up ports */
+    val udpPortSrc = csvContent.map(x => Try(x(11)).getOrElse("000")).distinct.filterNot(_.contains("000"))
+    val udpPortDst = csvContent.map(x => Try(x(12)).getOrElse("000")).distinct.filterNot(_.contains("000"))
+    // val udpPortSrc = pSrc.drop(1).dropRight(1)
+    // val udpPortDst = pDst.drop(1).dropRight(1)
+
+    println("Printing UDP source ports...\n")
+    udpPortSrc.drop(1).foreach(println)
+    println("Printing UDP destination ports...\n")
+    udpPortDst.drop(1).foreach(println)
+
+    /** TCP STUFF */
+
+      /** TCP Common Targets */
+    val tcpDstCommonTargets = checkCommonTargets(tcpPortDst)
+    val tcpSrcCommonTargets = checkCommonTargets(tcpPortSrc)
+
+    val tcpDst: Vector[(String, String)] = tcpDstCommonTargets.filterNot(x => x._2.contains("None"))
+    val tcpDstCommonReturn: Vector[Array[String]] = tcpDst.map(x => Array("tcpDst", x._1, x._2))
+
+    val tcpSrc: Vector[(String, String)]  = tcpSrcCommonTargets.filterNot(x => x._2.contains("None"))
+    val tcpSrcCommonReturn: Vector[Array[String]] = tcpSrc.map(x => Array("tcpSrc", x._1, x._2))
+
+    /** TCP Port Risk */
+    val tcpDstPortRisk = checkPortRisk(tcpPortDst)
+    val tcpSrcPortRisk = checkPortRisk(tcpPortSrc)
+
+    val tcpDstRisk: Vector[(String, String)]  = tcpDstPortRisk.filterNot(x => x._2.contains("None"))
+    val tcpDstRiskReturn: Vector[Array[String]] = tcpDstRisk.map(x => Array("tcppDst", x._1, x._2))
+
+    val tcpSrcRisk: Vector[(String, String)]  = tcpSrcPortRisk.filterNot(x => x._2.contains("None"))
+    val tcpSrcRiskReturn: Vector[Array[String]] = tcpSrcRisk.map(x => Array("tcpSrc", x._1, x._2))
+
+    /** UDP Common Tagets */
+    val udpDstCommonTargets = checkCommonTargets(udpPortDst)
+    val udpSrcCommonTargets = checkCommonTargets(udpPortSrc)
+
+    val udpDstTargets = udpDstCommonTargets.filterNot(x => x._2.contains("None"))
+    val udpDstCommonReturn: Vector[Array[String]] = udpDstTargets.map(x => Array("tcpDst", x._1, x._2))
+
+    val udpSrcTargets: Vector[(String, String)]  = udpSrcCommonTargets.filterNot(x => x._2.contains("None"))
+    val udpSrcCommonReturn: Vector[Array[String]] = udpSrcTargets.map(x => Array("tcpSrc", x._1, x._2))
+
+    val commonTargetReturn: Vector[Array[String]] = {
+      tcpSrcCommonReturn ++: tcpDstCommonReturn ++: udpDstCommonReturn ++: udpSrcCommonReturn
+    }
+    /** Port Risk*/
+
+
+
+    /** UDP Port Risk */
+
+    val udpDstPortRisk = checkPortRisk(udpPortDst)
+    val udpSrcPortRisk = checkPortRisk(udpPortSrc)
+
+    val udpDst: Vector[(String, String)]  = udpDstPortRisk.filterNot(x => x._2.contains("None"))
+    val udpDstRiskReturn: Vector[Array[String]] = udpDst.map(x => Array("udpDst", x._1, x._2))
+
+    val udpSrc: Vector[(String, String)]  = udpSrcPortRisk.filterNot(x => x._2.contains("None"))
+    val udpSrcRiskReturn: Vector[Array[String]] = udpSrc.map(x => Array("udpSrc", x._1, x._2))
+
+
+    /** Print TCP Common Targets */
+    if (tcpDst.nonEmpty) for(value <- tcpDst) println("Port: " + value._1 + " Risk: " + value._2)
+    if (tcpSrc.nonEmpty) for(value <- tcpSrc) println("Port: " + value._1 + " Risk: " + value._2)
+
+    /** Print UDP Common Targets */
+    if (udpSrc.nonEmpty) for(value <- udpSrc) println("Port: " + value._1 + " Risk: " + value._2)
+    if (udpDst.nonEmpty) for(value <- udpDst) println("Port: " + value._1 + " Risk: " + value._2)
+
+    val riskReturn = tcpDstRiskReturn ++: tcpSrcRiskReturn ++: udpDstRiskReturn ++: udpSrcRiskReturn
+
+
+    // val probs: Vector[Array[String]] = tcpDstReturn ++: tcpSrcReturn ++: udpDstReturn ++: udpSrcReturn
+
+    return PortProblems(riskReturn, commonTargetReturn)
+  } // END portAnalysis()
+
+  private[this] def checkCommonTargets(vec: Vector[String]): Vector[(String, String)] ={
+
+    val commonTargets = for(portNo <- vec) yield getCommonTargetPort(portNo)
+
+    return commonTargets
+  } // END checkCommonlyAttacked()
+
+  private[this] def checkPortRisk(vec: Vector[String]): Vector[(String, String)] ={
+
+    val commonTargets = for(portNo <- vec) yield getPortRisk(portNo)
+
+    return commonTargets
+  } // END checkCommonlyAttacked()
+
+  private[this] def ipAnalysis(csvContent: Vector[Array[String]]): Vector[PageInfo] = {
+
+    var buff = ArrayBuffer[(Int, String)]()
+    var i = 0
+    while(i < csvContent(2).size){
+      buff += (i -> csvContent(2)(i))
+      i = i + 1
+    }
+
+    println("Printing values and indices")
+    buff.foreach(println)
+
+    /**
+      * Eventually all this logic needs it's own method.
+      */
+    /** Grab content from various ip address columns */
+    val ipSrc: Vector[String] = csvContent.map(x => x(7)).distinct
+    val ipDst: Vector[String] = csvContent.map(x => x(8)).distinct
+
+    println("ipSrc size: " + ipSrc.size)
+    println("ipDst size: " + ipDst.size)
+
+    println("Printing ipSrc: ")
+    ipSrc.foreach(println)
+    println("Printing ipDst: ")
+    ipDst.foreach(println)
+
+    val concatIp = ipDst ++: ipSrc
+
+    val distinctIps: Vector[String] = concatIp.distinct
+
+    // val regex = "\"".r
+    // val cleanIps = distinctIps.map(x => regex.replaceAllIn(x, ""))
+
+    /** Removing quotes because the regex won't work! */
+    val clean = distinctIps.map(_.drop(1))
+    val cleanerIps = clean.map(_.dropRight(1))
+
+    /** Filter out local IP addresses */
+    val filterOutLocal = cleanerIps.filterNot(_.startsWith("192"))
+      .filterNot(_.startsWith("10"))
+      .filterNot(_.startsWith("172"))
+
+    val pageInfoFound: Vector[PageInfo] = whoIsQuery(cleanerIps)
+
+    println("Printing Page Info Found")
+
+    pageInfoFound.foreach(println)
+
+    println("Awesome! Page information printed.\n\nNow we're going to check for commonly attacked ports...\n\n")
+
+
+    return pageInfoFound
+  } // END ipAnalysis()
 
   private[this] def whoIsQuery(vec: Vector[String]): Vector[PageInfo] = {
     val whoIsResults: Vector[PageInfo] = for(str <- vec) yield getWhoIs(str)
@@ -200,7 +229,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
     Try(Source.fromFile(pcap).getLines.toVector)
   } // END readFile()
 
-  private[this] def getCommonTargetPort(portNo: String): String = {
+  private[this] def getCommonTargetPort(portNo: String): (String, String) = {
 
     // Check for the following ports
     val commonTargetPorts = Map("20" -> "ftp", "5060" -> "SIP", "554" -> "rtsp", "17185" -> "soundsvirtual",
@@ -219,11 +248,11 @@ class AutomatePcapAnalysis(pcapFile: String) {
     )
 
     /** Need to make sure this returns something if not found. */
-    return Try(commonTargetPorts(portNo)).getOrElse("None")
+    return (portNo, Try(commonTargetPorts(portNo)).getOrElse("None"))
   } // END getCommonTargetPort()
 
   /** Pass a port number to check risk associated w/ port number */
-  private[this] def getPortRisk(portNo: String): String = {
+  private[this] def getPortRisk(portNo: String): (String, String) = {
 
     /** Map of ports commonly used by hackers. List should include more ports.
       * Values based on SANS port report https://isc.sans.edu/port
@@ -269,7 +298,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
       "64549" -> "medium", "65285" -> "low", "350" -> "low", "577" -> "low", "857" -> "low",
     ) // END probPorts treemap
 
-    return Try(probPorts(portNo)).getOrElse("None")
+    return (portNo, Try(probPorts(portNo)).getOrElse("None"))
   } // END getProbPort()
 
 
