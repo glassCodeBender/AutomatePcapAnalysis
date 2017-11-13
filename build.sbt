@@ -4,9 +4,7 @@ version := "0.1"
 
 scalaVersion := "2.12.4"
 
-// libraryDependencies += "commons-net" % "commons-net" % "3.6"
-
-// libraryDependencies += "org.apache.httpcomponents" % "httpclient" % "4.5.3"
+libraryDependencies += "net.liftweb" % "lift-json_2.12" % "3.2.0-M2"
 
 assemblyJarName in assembly := "analyze_pcap.jar"
         
