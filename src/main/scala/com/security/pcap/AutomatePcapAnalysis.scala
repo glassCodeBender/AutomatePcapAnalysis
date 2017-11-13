@@ -36,7 +36,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
       val colHeaders: Array[String] = csvVec.head.split('\t')
 
       println("Column Headers: \n")
-      // colHeaders.foreach(println)
+      colHeaders.foreach(println)
 
       /** Remove headers and create 2d array of values */
       val csvContent: Vector[Array[String]] = csvVec.tail.map(_.split('\t'))
@@ -66,7 +66,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
     implicit val formats = DefaultFormats
     val jsonStr: String = write(pcapAnalysis)
     println("Printing test json string")
-    println(jsonStr)
+    // println(jsonStr)
 
     return jsonStr
   } // END createJson()
