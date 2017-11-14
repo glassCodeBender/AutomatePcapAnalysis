@@ -190,7 +190,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
     val sessionStarts = for{
       x <- vec
       if Try(x(21)).getOrElse("Blah") == "0x00000012"
-    } yield Array(x(0), x(1), x(2), x(3), x(4),x(5), Try(x(6)).getOrElse("Other"), x(7), x(8), x(9),x(10), x(11), x(12),
+    } yield Array(x(0), x(1), x(2), x(3), x(4),x(5), x(6), x(7), x(8), x(9),x(10), x(11), x(12),
       x(13), x(14),x(15), x(16), x(17), x(18), x(19), x(20), Try(x(21)).getOrElse("Other"), x(22), x(23))
 
     println("Printing Session Beginnings: \n\n")
