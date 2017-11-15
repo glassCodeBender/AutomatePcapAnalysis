@@ -9,6 +9,9 @@ Call :GetUnixTime UNIX_TIME
 firstDump = “raw_pcap%UNIX_TIME%.tcpdump”
 fileName = “pcap%UNIX_TIME%.csv”
 
+export $firstDump
+export $fileName
+
 # If the directory already doesn’t exist, make it. 
 mkdir Documents/pcaps
 
