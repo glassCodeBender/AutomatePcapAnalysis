@@ -2,7 +2,8 @@
 
 clear
 
-Set local
+# I have a feeling this could be wrong because I used Windows batch file code. 
+
 Call :GetUnixTime UNIX_TIME
 
 firstDump = “raw_pcap%UNIX_TIME%.tcpdump”
