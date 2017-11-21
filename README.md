@@ -4,3 +4,7 @@ The program will run as a scheduled task, grab traffic, and then print output ab
 who has connections into your system.
 
 This program is not completely done, but I don't have time to make it extra fancy. The core components of the program work and it's pretty fun to play with. 
+
+# Update
+
+I tries to upload the csv I used to create the geo location database and the database file, but both files are too large. It looks like this program is for personal use only. 
