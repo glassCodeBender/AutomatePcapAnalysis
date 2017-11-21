@@ -1,14 +1,6 @@
 package com.security.pcap
 
-import java.math.BigInteger
 import java.sql.{Connection, DriverManager, Statement}
-import java.net.InetAddress
-
-import com.google.common.io.ByteStreams
-import com.google.common.net
-import com.google.common.net.InetAddresses
-import java.nio.{ByteBuffer, ByteOrder}
-
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
@@ -26,7 +18,7 @@ final case class Geolocation(ip: String,
                              registered_country_name: String,
                              registered_subdivision_1_name: String,
                              mismatchBool: Boolean
-                            ){
+                            ) extends IpInfo(ip) {
   override def toString = {
     s"Geolocation for IP address: $ip\nRegistered Location $registered_country_name $registered_continent_name\n" +
     s"Registered City: $registered_city_name\n" +
@@ -35,15 +27,18 @@ final case class Geolocation(ip: String,
     s"Appears Subdivision: $appears_subdivision_1_name\nLatitude: $latitude\nLongitude: $longitude\n" +
     s"Accuracy Radius: $accuracy_radius\nPostal Code: $postal_code\nDo registered and appear match? $mismatchBool"
   } // END toString()
+  override def getSuccess: Boolean = if(latitude.isEmpty) false else true
+  override def getIp: String = ip
 } // END Geolocation case class
 
 object GeolocationInfo extends SearchRange {
-  def run(ips: Vector[String]): Vector[Geolocation] = {
+  def run(ips: Vector[String], whois: Vector[IpInfo]): Vector[IpInfo] = {
 
     /** Regex to ensure ip addresses are IPv4 */
       val regex = "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}".r
 
       val assertIPv4 = ips.map(x => regex.findFirstIn(x))
+
       /** Database only includes IPv4 */
       val removeNonIPv4 = assertIPv4.flatten.distinct
 
@@ -59,7 +54,7 @@ object GeolocationInfo extends SearchRange {
 
     println("Executing query for IP geolocation information...\n\nThis may take a while...")
 
-      val geolocVec: Vector[Geolocation] = for{
+      val geolocVec: Vector[IpInfo] = for{
         ip <- removeNonIPv4
       } yield mkGeoLocClass(ip, connection)
 
@@ -72,17 +67,21 @@ object GeolocationInfo extends SearchRange {
       case e: Throwable => System.err.println(e)
     }
 
-      return geolocVec
+    val ipInfoResult: Vector[IpInfo] = geolocVec ++: whois
+
+    /** Filter to only include successful results */
+    val filterSuccess = ipInfoResult.filter(x => x.getSuccess)
+
+    val ipsFromIpInfo = ipInfoResult.map(x => x.getIp)
+
+    return geolocVec
   } // END run()
 
 
-  private[this] def mkGeoLocClass(ip: String, connection: Connection): Geolocation = {
+  private[this] def mkGeoLocClass(ip: String, connection: Connection): IpInfo = {
 
     val statement: Statement = connection.createStatement()
     statement.setQueryTimeout(30)
-    val addr = InetAddresses.forString(ip)
-
-    val ipValue: Array[Byte] = addr.getAddress
 
     val intValue = ipToLong(ip)
 
@@ -95,7 +94,6 @@ object GeolocationInfo extends SearchRange {
 
     val query = s"SELECT * FROM IPLocData WHERE start_ipint <= $intValue AND end_ipint >= $intValue"
 
-    var geo = ArrayBuffer[Geolocation]()
     val result = statement.executeQuery(query)
 
     var appearsSub2 = ""
@@ -145,7 +143,6 @@ object GeolocationInfo extends SearchRange {
       }
       */
       println(s"Appears Country: $registeredCountry\nRegistered City: $regCity")
-
 
     } // END while loop
 
