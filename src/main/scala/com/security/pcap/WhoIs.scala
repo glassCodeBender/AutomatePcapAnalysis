@@ -1,8 +1,11 @@
 package com.security.pcap
 
-import java.net.{HttpURLConnection, URL}
-
 import scala.util.Try
+
+abstract class IpInfo(ip: String) {
+  def getSuccess: Boolean
+  def getIp: String
+}
 
 final case class PageInfo( ip: String,
                            name: String,     // registered name
@@ -12,14 +15,23 @@ final case class PageInfo( ip: String,
                            country: String,  // country
                            post: String,     // postal cose
                            ipRange: String,  // IP range
-                           url: String       // url to see content
-                         ){
+                           url: String,      // url to see content
+                           description: String
+                         ) extends IpInfo(ip) {
+  override def getIp: String = ip
+  override def getSuccess: Boolean = {
+    if (name == "Connection failed.")
+      false
+    else {
+      true
+    }
+  }
   override def toString = {
     if (name == "Connection failed.")
       "Connection failed."
     else {
       s"\nWhois Results for $ip\nName: $name\nStreet: $street\nCity: $city\nState: $state\nPostal Code: $post\nCountry: $country\n" +
-        s"IP Address Range: $ipRange\nWhois Registration Info URL: $url" + "\n"
+        s"IP Address Range: $ipRange\nWhois Registration Info URL: $url" + s"\nDescription: $description"
     }
   } // END toString()
 
@@ -44,7 +56,7 @@ class WhoIs(ip: String) extends HttpClient {
     val ipInfo: Vector[String] = parseInfo(infoPage)
 
     return PageInfo(ip, ipInfo(0).trim, ipInfo(2).trim, ipInfo(3).trim,
-      ipInfo(1).trim, ipInfo(5).trim, ipInfo(4).trim, netRange, url2)
+      ipInfo(1).trim, ipInfo(5).trim, ipInfo(4).trim, netRange, url2, "None")
   } // END query()
 
   private[this] def parseInfo(page: String): Vector[String] = {
