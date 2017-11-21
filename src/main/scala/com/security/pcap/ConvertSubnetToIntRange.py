@@ -30,10 +30,10 @@ df['start_ip'] = df['network'].apply(start_ipaddr)
 
 df['end_ip'] = df['network'].apply(end_ipaddr)
 
-df.drop(['start_range', 'end_range', 'network', 'start_ip', 'end_ip', 'registered_metro_code'], axis=1, inplace=True)
-
 df['start_ipint'] = df['start_ip'].apply(ip_int)
 
 df['end_ipint'] = df['end_ip'].apply(ip_int)
+
+df.drop(['start_range', 'end_range', 'network', 'start_ip', 'end_ip', 'registered_metro_code'], axis=1, inplace=True)
 
 df.to_csv("IpGeoLocNew.csv", sep=',')
