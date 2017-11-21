@@ -32,6 +32,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
       val csvVec: Vector[String] = read.get
 
+
       /** Create single array of column headers*/
       val colHeaders: Array[String] = csvVec.head.split('\t')
 
@@ -42,25 +43,64 @@ class AutomatePcapAnalysis(pcapFile: String) {
       val csvContent: Vector[Array[String]] = csvVec.tail.map(_.split('\t'))
 
       /** Look for ports commonly attacked by adversaries. */
-      val (risk, commonTargets): (Vector[Array[String]], Vector[Array[String]]) = portRiskAnalysis(csvContent)
+      // val (risk, commonTargets): (Vector[Array[String]], Vector[Array[String]]) = portRiskAnalysis(csvContent)
 
       /** Check for the beginning of sessions. Might miss some if sniffer started after session began.*/
       val sessBeginning  = checkSessionBeginnings(csvContent)
 
       /** Get information about the IP addresses. */
-      val ipInfo: Vector[PageInfo] = ipAnalysis(csvContent)
+      val distinctIps = grabIps(csvContent)
+
+
+      /** Whois Lookup Stuff */
+      val ipInfo: Vector[IpInfo] = whoisAnalysis(distinctIps)
+
+
+      println("\n\nPrinting geolocation info\n\n")
+      val combinedWhoIsGeoLoc = GeolocationInfo.run(distinctIps, ipInfo)
+
+      /**
+        * Now we need to clean it all up and combine it.
+        */
+
 
       val sessBegin = sessBeginning :+ colHeaders
 
-      val findings = PcapAnalysis(risk, commonTargets, sessBegin, ipInfo)
+      // val findings = PcapAnalysis(risk, commonTargets, sessBegin, ipInfo)
 
-      val jsonFindings = createJson(findings)
+      //val jsonFindings = createJson(findings)
 
 
     } // END else
-
-
   } // END main()
+
+  private[this] def grabIps(csvContent: Vector[Array[String]]): Vector[String] = {
+
+    /** Grab content from various ip address columns */
+    val ipSrc: Vector[String] = csvContent.map(x => x(7)).distinct
+    val ipDst: Vector[String] = csvContent.map(x => x(8)).distinct
+
+    println("ipSrc size: " + ipSrc.size)
+    println("ipDst size: " + ipDst.size)
+
+    println("Printing ipSrc: ")
+    ipSrc.foreach(println)
+    println("Printing ipDst: ")
+    ipDst.foreach(println)
+
+    val concatIp = ipDst ++: ipSrc
+
+    val distinctIps: Vector[String] = concatIp.distinct
+
+    // val regex = "\"".r
+    // val cleanIps = distinctIps.map(x => regex.replaceAllIn(x, ""))
+
+    /** Removing quotes because the regex won't work! */
+    val clean = distinctIps.map(_.drop(1))
+    val cleanerIps: Vector[String] = clean.map(_.dropRight(1))
+    cleanerIps
+  }
+
   private[this] def createJson(pcapAnalysis: PcapAnalysis): String = {
 
     implicit val formats = DefaultFormats
@@ -218,7 +258,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
     return commonTargets
   } // END checkCommonlyAttacked()
 
-  private[this] def ipAnalysis(csvContent: Vector[Array[String]]): Vector[PageInfo] = {
+  private[this] def whoisAnalysis(csvContent: Vector[String]): Vector[IpInfo] = {
 
     /** This is for debugging */
     /*
@@ -234,39 +274,43 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
     */
 
-    /** Grab content from various ip address columns */
-    val ipSrc: Vector[String] = csvContent.map(x => x(7)).distinct
-    val ipDst: Vector[String] = csvContent.map(x => x(8)).distinct
-
-    println("ipSrc size: " + ipSrc.size)
-    println("ipDst size: " + ipDst.size)
-
-    println("Printing ipSrc: ")
-    ipSrc.foreach(println)
-    println("Printing ipDst: ")
-    ipDst.foreach(println)
-
-    val concatIp = ipDst ++: ipSrc
-
-    val distinctIps: Vector[String] = concatIp.distinct
-
-    // val regex = "\"".r
-    // val cleanIps = distinctIps.map(x => regex.replaceAllIn(x, ""))
-
-    /** Removing quotes because the regex won't work! */
-    val clean = distinctIps.map(_.drop(1))
-    val cleanerIps = clean.map(_.dropRight(1))
 
     /** Filter out local IP addresses */
-    val filterOutLocal = cleanerIps.filterNot(_.startsWith("192"))
+    val filterOutLocal: Vector[String] = csvContent.filterNot(_.startsWith("192"))
       .filterNot(_.startsWith("10"))
       .filterNot(_.startsWith("172"))
 
-    val pageInfoFound: Vector[PageInfo] = whoIsQuery(cleanerIps)
+    val checkKnown: Vector[Option[PageInfo]] = for(item <- filterOutLocal) yield CommonIPs.checkList(item)
 
-    println("Printing Page Info Found")
+    /** Remove None types from list. */
+    val flatCheckKnown: Vector[PageInfo] = checkKnown.flatten
+    /** Grab the ips we already have info for. */
 
-    pageInfoFound.foreach(println)
+    val ipsKnown = flatCheckKnown.map(_.ip)
+
+    println("Printing known IPs")
+    println(ipsKnown.size)
+    ipsKnown.foreach(println)
+
+    /** Get a list that includes only those we don't already have. */
+    val diffIps: Vector[String] = filterOutLocal.diff(ipsKnown)
+    println("Printing diffIps")
+    println(diffIps.length)
+    diffIps.foreach(println)
+    /** Query IP addresses for unknown IPs*/
+    // val newQuery = whoIsQuery(diffIps)
+
+    /** Now we need to do a whois query for all the ips we don't know. */
+
+      /** Find the difference between the two lists */
+
+    val pageInfoFound: Vector[IpInfo] = whoIsQuery(diffIps)
+
+    val allWhois: Vector[IpInfo] = pageInfoFound ++: flatCheckKnown
+
+    println("Printing Page Info Found (allWhoIs):\n\n")
+
+    allWhois.foreach(println)
 
     println("Awesome! Page information printed.\n\nNow we're going to check for commonly attacked ports...\n\n")
 
@@ -274,7 +318,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
     return pageInfoFound
   } // END ipAnalysis()
 
-  private[this] def whoIsQuery(vec: Vector[String]): Vector[PageInfo] = {
+  private[this] def whoIsQuery(vec: Vector[String]): Vector[IpInfo] = {
     val whoIsResults: Vector[PageInfo] = for(str <- vec) yield getWhoIs(str)
 
     return whoIsResults
@@ -282,7 +326,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
   private[this] def getWhoIs(str: String): PageInfo = {
     val whois = new WhoIs(str)
-    val result = Try(whois.query()).getOrElse(PageInfo(str, "Failed", "Failed", "Failed", "", "","","",""))
+    val result = Try(whois.query()).getOrElse(PageInfo(str, "Failed", "Failed", "Failed", "", "","","","", ""))
 
     return result
   }
