@@ -339,7 +339,11 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
     val connection: Connection = DriverManager.getConnection(path)
 
-    for(value <- vec ) individualDbUpdate(value, connection)
+    val regex = "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}".r
+    val cleanedWhoIs = vec.filter(x => regex.findFirstIn(x.ip).getOrElse("Blah") != "Blah")
+    val extraClean = cleanedWhoIs.filterNot(x => x.url.nonEmpty)
+
+    for(value <- extraClean ) individualDbUpdate(value, connection)
 
     try{
       if(connection != null)
@@ -366,28 +370,99 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
     val result = statement.executeQuery(query)
 
-    var index = ""
+    var index = 0
     while (result.next()) {
       /** The Index value from geolocation db  */
-      index = result.getString("index")
+      index = index + result.getInt("index")
     }
+
+    println("Index = " + index )
+    if(index == 0 ) index = 999999999
+
+    var ip = ""
+    if(page.ip.nonEmpty) ip = page.ip
+    else ip = "None"
+    var name = ""
+
+    if(page.name.nonEmpty) name = page.name
+    else ip = "None"
+
+    var city = ""
+    if(page.city.nonEmpty)
+      city = page.city
+    else
+      city = "None"
+
+    var state = ""
+    if(page.state.nonEmpty)
+      state = page.state
+    else
+      state = page.state
+
+    var street = "None"
+    if(page.street.nonEmpty)
+      street = page.street
+    else
+      street = "None"
+
+    var country = ""
+    if(page.country.nonEmpty)
+      country = page.country
+    else
+      country = "None"
+
+    var post = ""
+    if(page.post.nonEmpty)
+      post = page.post
+    else
+      post = "None"
+    var url = ""
+    if(page.url.nonEmpty)
+      url = page.url
+    else
+      url = "None"
+
+    var description = ""
+    if(page.description.nonEmpty)
+      description = page.description
+    else
+      description = "None"
+
+    val timestamp = java.sql.Types.TIMESTAMP
+
     val splitRange = page.ipRange.split('-')
-    val startIpLong = ipToLong(splitRange(0).trim).toInt
-    val endIpLong = ipToLong(splitRange(1).trim).toInt
+    val startIpLong = ipToLong(splitRange(0).trim)
+    val endIpLong = ipToLong(splitRange(1).trim)
 
     // val newStatement = connection.createStatement()
     // newStatement.setQueryTimeout(30)
+    /*
+    val updateStatement = s"INSERT INTO Whois ($index, \'$ip\', \'$name\', \'$city\', \'$state\'," +
+      s" \'$street\', \'$country\', \'$post\', $startIpLong, $endIpLong, \'$url\', \'$description\', \'$timestamp\')" +
+      " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"
+      */
+    val updateStatement = s"INSERT INTO Whois (index, ip, name, city, state," +
+      s" street, country, post, start_ip, end_ip, url, description, date_added)" +
+    " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
-    val updateStatement = s"INSERT INTO Whois VALUES ($index, ${page.ip}, ${page.name}, ${page.city}, ${page.state}," +
-    s" ${page.street}, ${page.country}, ${page.post}, $startIpLong, $endIpLong, ${page.url}, ${page.description})"
+    val pstmt = connection.prepareStatement(updateStatement)
 
-    val stmt = connection.createStatement()
+    // $startIpLong, $endIpLong,
+    pstmt.setInt(1, index)
+    pstmt.setString(2, ip)
+    pstmt.setString(3, name)
+    pstmt.setString(4, city)
+    pstmt.setString(5, state)
+    pstmt.setString(6, street)
+    pstmt.setString(7, country)
+    pstmt.setString(8, post)
+    pstmt.setInt(9, startIpLong.toInt)
+    pstmt.setInt(10, endIpLong.toInt)
+    pstmt.setString(11, url)
+    pstmt.setString(12, description)
+    pstmt.setInt(13, timestamp)
 
-
-    stmt.executeUpdate(updateStatement)
-
-
-    // newStatement.executeUpdate(updateStatement)
+   pstmt.executeUpdate(updateStatement)
 
   } // END individualDbUpdate()
 
