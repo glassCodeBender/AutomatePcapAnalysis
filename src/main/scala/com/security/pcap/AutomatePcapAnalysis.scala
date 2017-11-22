@@ -379,21 +379,20 @@ class AutomatePcapAnalysis(pcapFile: String) {
     // newStatement.setQueryTimeout(30)
 
     val updateStatement = "INSERT INTO Whois(index,ip,name,city,state,street,country,post,start_ip,end_ip,url)" +
-    s" VALUES($index,${page.ip},${page.name},${page.city},${page.state},${page.street},${page.country},${page.post}," +
-    s"$startIpLong,$endIpLong,${page.url})"
+    s" VALUES(?,?,?,?,?,?,?,?,?,?)"
 
     val prepStmt = connection.prepareStatement(updateStatement)
 
     prepStmt.setInt(1, index.toInt)
-    prepStmt.setString(2, "ip")
-    prepStmt.setString(3, "name")
-    prepStmt.setString(4, "city")
-    prepStmt.setString(5, "state")
-    prepStmt.setString(6, "street")
-    prepStmt.setString(7, "country")
-    prepStmt.setString(8, "post")
-    prepStmt.setString(9, "start_ip")
-    prepStmt.setString(10, "end_ip")
+    prepStmt.setString(2, page.ip)
+    prepStmt.setString(3, page.name)
+    prepStmt.setString(4, page.city)
+    prepStmt.setString(5, page.state)
+    prepStmt.setString(6, page.street)
+    prepStmt.setString(7, page.country)
+    prepStmt.setString(8, page.post)
+    prepStmt.setInt(9, startIpLong.toInt)
+    prepStmt.setInt(10, endIpLong.toInt)
     prepStmt.executeUpdate()
 
 
@@ -483,5 +482,5 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
     return (portNo, Try(probPorts(portNo)).getOrElse("None"))
   } // END getProbPort()
- 
+
 } // END AutomatePcapAnalysis
