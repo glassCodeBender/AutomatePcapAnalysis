@@ -1,4 +1,4 @@
- package com.security.pcap
+package com.security.pcap
 
 // import sys.process._
 import java.sql.{Connection, DriverManager, Statement}
@@ -384,15 +384,16 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
     val prepStmt = connection.prepareStatement(updateStatement)
 
-    prepStmt.setString(1, "ip")
-    prepStmt.setString(2, "name")
-    prepStmt.setString(3, "city")
-    prepStmt.setString(4, "state")
-    prepStmt.setString(5, "street")
-    prepStmt.setString(6, "country")
-    prepStmt.setString(7, "post")
-    prepStmt.setString(8, "start_ip")
-    prepStmt.setString(9, "end_ip")
+    prepStmt.setInt(1, index.toInt)
+    prepStmt.setString(2, "ip")
+    prepStmt.setString(3, "name")
+    prepStmt.setString(4, "city")
+    prepStmt.setString(5, "state")
+    prepStmt.setString(6, "street")
+    prepStmt.setString(7, "country")
+    prepStmt.setString(8, "post")
+    prepStmt.setString(9, "start_ip")
+    prepStmt.setString(10, "end_ip")
     prepStmt.executeUpdate()
 
 
@@ -482,6 +483,5 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
     return (portNo, Try(probPorts(portNo)).getOrElse("None"))
   } // END getProbPort()
-
-
+ 
 } // END AutomatePcapAnalysis
