@@ -1,11 +1,14 @@
-package com.security.pcap
+ package com.security.pcap
 
 // import sys.process._
+import java.sql.{Connection, DriverManager, Statement}
+
+import com.security.pcap.GeolocationInfo.ipToLong
+
 import scala.collection.immutable.TreeMap
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 import scala.collection.mutable._
-
 import net.liftweb.json._
 import net.liftweb.json.Serialization.write
 
@@ -58,6 +61,7 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
       println("\n\nPrinting geolocation info\n\n")
       val combinedWhoIsGeoLoc = GeolocationInfo.run(distinctIps, ipInfo)
+
 
       /**
         * Now we need to clean it all up and combine it.
@@ -274,7 +278,6 @@ class AutomatePcapAnalysis(pcapFile: String) {
 
     */
 
-
     /** Filter out local IP addresses */
     val filterOutLocal: Vector[String] = csvContent.filterNot(_.startsWith("192"))
       .filterNot(_.startsWith("10"))
@@ -321,8 +324,81 @@ class AutomatePcapAnalysis(pcapFile: String) {
   private[this] def whoIsQuery(vec: Vector[String]): Vector[IpInfo] = {
     val whoIsResults: Vector[PageInfo] = for(str <- vec) yield getWhoIs(str)
 
-    return whoIsResults
+    val filteredWhois = whoIsResults.filter(x => x.getSuccess)
+
+    addWhoisToDb(filteredWhois)
+
+    return filteredWhois
   } // END whoIs()
+
+  /** Add Result of Whois query to database */
+  private[this] def addWhoisToDb(vec: Vector[PageInfo]) = {
+
+    /** Set up SQL driver*/
+    val path = "jdbc:sqlite:" + System.getProperty("user.dir") + "/pcaps/IP2GeoLoc.db"
+
+    val connection: Connection = DriverManager.getConnection(path)
+
+    for(value <- vec ) individualDbUpdate(value, connection)
+
+    try{
+      if(connection != null)
+        connection.close()
+    } catch{
+      case e: Throwable => System.err.println(e)
+    }
+
+  } // addWhoisToDb
+  private[this] def individualDbUpdate(page: PageInfo, connection: Connection): Unit = {
+    val statement: Statement = connection.createStatement()
+    statement.setQueryTimeout(30)
+
+    val intValue = ipToLong(page.ip)
+
+    /** Testing conversion of IPv4 to Int */
+    println("Testing conversion of IPv4 to Int")
+
+    println(intValue)
+
+    // val ipValue = ipToLong(ip)
+
+    val query = s"SELECT * FROM IPLocData WHERE start_ipint <= $intValue AND end_ipint >= $intValue"
+
+    val result = statement.executeQuery(query)
+
+    var index = ""
+    while (result.next()) {
+      /** The Index value from geolocation db  */
+      index = result.getString("index")
+    }
+    val splitRange = page.ipRange.split('-')
+    val startIpLong = ipToLong(splitRange(0).trim)
+    val endIpLong = ipToLong(splitRange(1).trim)
+
+    // val newStatement = connection.createStatement()
+    // newStatement.setQueryTimeout(30)
+
+    val updateStatement = "INSERT INTO Whois(index,ip,name,city,state,street,country,post,start_ip,end_ip,url)" +
+    s" VALUES($index,${page.ip},${page.name},${page.city},${page.state},${page.street},${page.country},${page.post}," +
+    s"$startIpLong,$endIpLong,${page.url})"
+
+    val prepStmt = connection.prepareStatement(updateStatement)
+
+    prepStmt.setString(1, "ip")
+    prepStmt.setString(2, "name")
+    prepStmt.setString(3, "city")
+    prepStmt.setString(4, "state")
+    prepStmt.setString(5, "street")
+    prepStmt.setString(6, "country")
+    prepStmt.setString(7, "post")
+    prepStmt.setString(8, "start_ip")
+    prepStmt.setString(9, "end_ip")
+    prepStmt.executeUpdate()
+
+
+    // newStatement.executeUpdate(updateStatement)
+
+  } // END individualDbUpdate()
 
   private[this] def getWhoIs(str: String): PageInfo = {
     val whois = new WhoIs(str)
