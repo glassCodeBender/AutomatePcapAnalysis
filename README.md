@@ -8,3 +8,7 @@ This program is not completely done, but I don't have time to make it extra fanc
 # Update
 
 I tries to upload the csv I used to create the geo location database and the database file, but both files are too large. It looks like this program is for personal use only. 
+
+# INFORMATION:
+
+Use the commands in the shell script to figure out how to capture traffic using tshark. This program was specifically written to deal w/ a specific style of data that is output by tshark. 
